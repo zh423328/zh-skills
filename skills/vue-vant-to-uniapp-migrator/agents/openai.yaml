@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vue Vant 迁移 UniApp"
+  short_description: "将 Vant Vue 页面迁移到默认 UniApp+wot TS 结构。"
+  default_prompt: "将当前 Vue3+Vant 页面迁移为默认 create-zh-uni 的 uni-app+wot-design-uni+TypeScript 结构，保留业务逻辑与函数名，不引入自定义组件。"
