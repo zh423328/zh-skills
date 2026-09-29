@@ -27,6 +27,25 @@
 - 迁移边界类型已稳定（仅必要处使用 `any`、`as any[]`）。
 - 平台差异仅在必要处用 `#ifdef`/`#endif`。
 
+## 来自 DCloud 官方指南的补充检查项
+
+- `select` 标签已替换为 `wd-picker` / 原生 `picker`。
+- 固定高度 + `overflow: auto` 容器已改为 `scroll-view`（带 `scroll-y`）。
+- 滑动切换（banner/引导页/tab）已改为 `swiper`，无 div + touch 模拟残留。
+- `<input type="search">` 已改为 `confirm-type="search"` + `@confirm`。
+- `v-html` 已改为 `rich-text`，或用 `#ifdef` 限定非小程序端（App 端可保留）。
+- `window.addEventListener('resize')` 已改为 `uni.onWindowResize`。
+- `navigator.geolocation` 已改为 `uni.getLocation`。
+- `navigator.userAgent` 设备判断已改为 `uni.getSystemInfoSync().platform`。
+- DOM 尺寸获取已改为 `uni.createSelectorQuery`（`<script setup>` 中配合 `getCurrentInstance()`）。
+- WebSocket 已改为 `uni.connectSocket` 系列。
+- input 的 H5 type 值（email/tel/url/password）已按小程序规则处理（改 text + JS 校验 / password 布尔属性）。
+- `<audio>` 标签已改为 `uni.createInnerAudioContext` API 方式。
+- 样式中无 `*` 通配选择器，`body` 选择器已改为 `page`。
+- 未使用过新的 CSS 语法（避免低端 Android 样式错误）。
+- 三方库无 dom/window/navigator 依赖（有的话已走替代/renderjs/人工确认）。
+- `data` 为函数 return 写法（`<script setup>` 天然满足）。
+
 ## 建议验证
 
 ```bash

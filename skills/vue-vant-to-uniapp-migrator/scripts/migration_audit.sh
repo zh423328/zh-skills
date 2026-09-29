@@ -38,9 +38,15 @@ print_hits() {
 
 print_hits "ERROR" "仍存在 Vant 组件引用" "<van-|from ['\"]vant|@vant" --glob '*.vue' --glob '*.ts'
 print_hits "ERROR" "仍存在 Vue Router 旧 API 调用" "router\.push|router\.replace|router\.go\(-1\)|currentRoute\.value\.query" --glob '*.vue' --glob '*.ts'
-print_hits "ERROR" "仍存在不建议的页面生命周期钩子" "onBeforeMount\(|onUnmounted\(" --glob '*.vue' --glob '*.ts'
+print_hits "ERROR" "页面文件仍使用 Vue-only 生命周期钩子" "onBeforeMount\(|onUnmounted\(" --glob '**/pages/**/*.vue'
+print_hits "ERROR" "仍存在未处理的 v-html（须改 rich-text 或 #ifdef 限定非小程序端）" "v-html" --glob '*.vue'
+print_hits "ERROR" "仍存在 * 通配选择器（uni-app 不支持）" "^\s*\*+\s*[,{]|,\s*\*+\s*[,{]" --glob '*.vue' --glob '*.scss' --glob '*.css'
 
 print_hits "WARN" "可能仍有 px 单位未转换" "[0-9]+px" --glob '*.vue' --glob '*.scss' --glob '*.css'
+print_hits "WARN" "可能残留 body 选择器（建议改 page）" "(^|[\s,>+~])body([.#:,[\s{]|$)" --glob '*.vue' --glob '*.scss' --glob '*.css'
+print_hits "WARN" "可能残留 overflow 区域滚动（应改 scroll-view）" "overflow(-y|-x)?:\s*(auto|scroll)" --glob '*.vue' --glob '*.scss' --glob '*.css'
+print_hits "WARN" "可能残留浏览器专属 API" "window\.addEventListener\(['\"]resize|navigator\.geolocation|navigator\.userAgent|document\.getElementById|new WebSocket\(" --glob '*.vue' --glob '*.ts'
+print_hits "WARN" "可能残留 input type=search（应改 confirm-type）" "(^|[\s])type=[\"']search[\"']" --glob '*.vue'
 # print_hits "WARN" "检测到 @include，请确认是否已正确引入 mixins.scss" "@include" --glob '*.scss'
 
 echo "审计汇总：错误(ERROR)=${error_count}，警告(WARN)=${warn_count}"
