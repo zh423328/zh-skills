@@ -17,7 +17,7 @@ description: FastAPI 项目一键初始化技能。面向零基础小白，提�
 | 2 | **自动安装** | 创建 venv、安装依赖、编译检查 |
 | 3 | **一键启动/重启** | `./restart.sh [dev|prod]`：环境搭建、拉代码、装依赖、安全停旧进程、启动、输出日志命令 |
 | 4 | **开发模式** | `./restart.sh dev` 热重载，改代码自动重启，日志 `logs/dev.log` |
-| 5 | **生产模式** | `./restart.sh prod` 后台多 worker，日志 `logs/app.log` |
+| 5 | **生产模式 + 热更新** | `./restart.sh prod` 由 gunicorn master-worker 托管；服务运行中重复执行即热更新（HUP 优雅重启 worker，服务不中断），日志 `logs/app.log` |
 | 6 | **JWT 鉴权** | 注册 / 登录 / 刷新令牌 / 登出 / 当前用户注入（`/api/auth/*`） |
 | 7 | **示例 CRUD** | 条目管理 `/api/items`：分页列表、详情、创建、更新、删除，作为新模块的参照实现 |
 | 8 | **统一响应** | `EnvelopeRoute` 自动包装 `{ code, message, data }` |
@@ -61,7 +61,7 @@ description: FastAPI 项目一键初始化技能。面向零基础小白，提�
 3. 写入核心模块（main.py、core/config.py、core/security.py、core/response.py、core/exceptions.py、db/session.py、db/base.py）
 4. 写入数据层（models → schemas → crud）
 5. 写入路由层（api/deps.py、api/routes/：health、auth、items）
-6. 写入启动脚本（`restart.sh` / `restart.bat`，dev/prod 双模式）
+6. 写入启动脚本（`restart.sh` / `restart.bat`，dev/prod 双模式）与 `gunicorn.conf.py`
 7. 写入 Docker 配置（Dockerfile + docker-compose.yml / docker-compose.pg.yml / docker-compose.mongo.yml，按需启用）
 8. 写入强制交付物（docs/project-guide.md）与项目说明（README.md）
 
@@ -134,6 +134,7 @@ app/
 - 健康检查：`GET /api/health`、`GET /api/health/db`
 - 表名：snake_case 单数（`user`、`item`）
 - 数据库默认 MySQL，可选 PostgreSQL / MongoDB / 无数据库；MongoDB 与 none 模式仅 health 路由可用
+- 生产模式：gunicorn master-worker 托管（`gunicorn.conf.py`），支持 HUP 热更新；开发模式 uvicorn --reload
 
 ## 引用索引
 
@@ -144,7 +145,7 @@ app/
 | `references/env-setup.md` | 环境探测流程、自动安装逻辑、常见问题排错 |
 | `references/db-guide.md` | 数据库选型、MySQL/PG/Mongo 连接配置、Docker 启动命令 |
 | `references/middleware-guide.md` | 中间件链（安全头→日志→CORS→鉴权→校验→响应→异常）与鉴权流程 |
-| `references/startup-scripts.md` | `restart.sh` / `restart.bat` 脚本模板（dev/prod 双模式，一条命令完成拉代码、装依赖、安全重启、日志输出） |
+| `references/startup-scripts.md` | `restart.sh` / `restart.bat` 脚本模板（dev/prod 双模式；prod 由 gunicorn 托管，支持 HUP 热更新；一条命令完成拉代码、装依赖、安全重启、日志输出） |
 | `references/project-guide-template.md` | 生成项目 `docs/project-guide.md` 的模板，含栈说明、启动方式、拓展指南 |
 
 ## 强制交付物

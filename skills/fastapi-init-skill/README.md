@@ -28,9 +28,9 @@ FastAPI 零基础、FastAPI 小白、帮我搭一个 FastAPI、新建 FastAPI
 |------|------|
 | **环境探测** | 自动检测 Python 版本（>=3.9）、操作系统 |
 | **自动安装** | 创建 venv、安装依赖、编译检查 |
-| **一键启动/重启** | `./restart.sh [dev|prod]`：环境搭建、拉代码、装依赖、安全重启、日志输出 |
-| **开发模式** | `./restart.sh dev` 热重载，日志 `logs/dev.log` |
-| **生产模式** | `./restart.sh prod` 后台多 worker，日志 `logs/app.log` |
+| **一键启动/重启** | `./restart.sh [dev|prod]`：环境搭建、拉代码、装依赖、热更新或安全重启、日志输出 |
+| **开发模式** | `./restart.sh dev` uvicorn 热重载，日志 `logs/dev.log` |
+| **生产模式 + 热更新** | `./restart.sh prod` gunicorn master-worker 托管；服务运行中重复执行即热更新（HUP 优雅重启 worker，服务不中断），日志 `logs/app.log` |
 | **JWT 鉴权** | 注册、登录、刷新令牌、登出、当前用户（`/api/auth/*`） |
 | **示例 CRUD** | 条目管理 `/api/items`：分页列表、详情、创建、更新、删除 |
 | **统一响应** | `{ code, message, data }` 自动包装 |
@@ -64,7 +64,8 @@ AI：开始生成...
 
 🚀 启动方式：
   开发模式：  ./restart.sh dev         # 热重载，日志 logs/dev.log
-  生产模式：  ./restart.sh prod        # 后台多 worker，日志 logs/app.log
+  生产模式：  ./restart.sh prod        # gunicorn master-worker，日志 logs/app.log
+  热更新：    ./restart.sh prod        # 服务运行中重复执行 = HUP 优雅热更新
   默认：      ./restart.sh             # 同 dev
 
 📖 接口文档：
@@ -133,6 +134,7 @@ fastapi-init-skill/
 - **Pydantic v2**（数据校验与配置管理）
 - **python-jose**（JWT 签发与验证）
 - **bcrypt**（密码加密）
+- **gunicorn + UvicornWorker**（生产进程管理：master-worker、HUP 热更新，仅 Linux/macOS）
 - **Alembic**（数据库迁移，生产环境使用）
 
 ## 生成项目的目录结构（官方模板分层）
@@ -183,8 +185,9 @@ curl http://localhost:8080/api/health
 | 规则 | 说明 |
 |------|------|
 | **单入口** | 每个平台只生成一个脚本，不拆分 setup / dev / start |
-| **参数分模式** | `./restart.sh dev` 开发热重载，`./restart.sh prod` 生产多 worker，默认 dev |
-| **一条龙** | 拉代码 → 装依赖 → 安全停旧进程 → 启动 → 输出日志命令 |
+| **参数分模式** | `./restart.sh dev` 开发热重载（uvicorn），`./restart.sh prod` 生产 master-worker（gunicorn），默认 dev |
+| **一条龙** | 拉代码 → 装依赖 → 热更新或安全停旧进程 → 启动 → 输出日志命令 |
+| **生产热更新** | 检测到 gunicorn master 存活且端口在监听 → 只发 `kill -HUP`，优雅重启 worker 不断服务；否则走完全重启 |
 | **安全杀旧进程** | 先按 `app.pid` 优雅停止；PID 失效则按端口扫描清理残留进程 |
 | **自动 .env** | 无 `.env` 时自动从 `.env.example` 复制并提示编辑 |
 | **日志落地** | dev 写入 `logs/dev.log`，prod 写入 `logs/app.log`，启动后打印查看命令 |

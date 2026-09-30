@@ -46,7 +46,8 @@
 ├── docs/
 │   └── project-guide.md     # 项目指南（强制交付物）
 ├── restart.sh               # 一键启动/重启脚本（Linux/macOS，dev/prod 双模式）
-├── restart.bat               # 一键启动/重启脚本（Windows，dev/prod 双模式）
+├── restart.bat              # 一键启动/重启脚本（Windows，dev/prod 双模式）
+├── gunicorn.conf.py         # gunicorn 生产配置（master-worker + HUP 热更新，仅 Linux/macOS）
 ├── requirements.txt         # Python 依赖清单
 ├── .env.example             # 环境变量模板（带安全注释，必须生成）
 ├── .env                     # 实际运行环境变量（首次从 .env.example 复制，按需修改）
@@ -70,6 +71,8 @@
 ```txt
 fastapi
 uvicorn[standard]
+gunicorn
+uvicorn-worker
 pydantic
 pydantic-settings
 python-dotenv
@@ -1063,6 +1066,38 @@ htmlcov/
 .env.*.local
 ```
 
+### gunicorn.conf.py
+
+```python
+"""gunicorn 生产配置（仅 Linux/macOS；Windows 下 restart.bat 仍使用 uvicorn）。
+
+由 restart.sh prod 启动：gunicorn app.main:app -c gunicorn.conf.py
+热更新：代码更新后再次执行 ./restart.sh prod，脚本给 master 发 HUP 信号，
+新 worker 加载新代码、旧 worker 处理完存量请求后退出，服务不中断。
+"""
+
+import os
+
+# 端口与 worker 数来自环境变量，与 restart.sh 的约定保持一致
+bind = "0.0.0.0:" + os.getenv("APP_PORT", "8080")
+workers = int(os.getenv("APP_WORKERS", "2"))
+worker_class = "uvicorn_worker.UvicornWorker"
+
+# master 进程 PID 写入 app.pid，restart.sh 的热更新判断与 kill -HUP 依赖它
+pidfile = "app.pid"
+
+# ⚠️ 保持 False：HUP 热更新依赖 worker 重新 import 磁盘上的新代码；
+# 开启 True 会导致 HUP 出来的新 worker 仍跑 master 内存中的旧代码
+preload_app = False
+
+# 优雅退出最长等待（秒）：旧 worker 处理完存量请求，超时强杀
+graceful_timeout = 30
+# worker 无响应判定（秒）：超时被 master 自动拉起
+timeout = 60
+# keepalive 长连接保持（秒）
+keepalive = 5
+```
+
 ## 关键约定
 
 - 表名：snake_case 单数（如 `user`、`item`），主键 `id` 自增，必备 `created_at` / `updated_at`
@@ -1073,6 +1108,7 @@ htmlcov/
 - 数据库默认 MySQL，可选 PostgreSQL / MongoDB / 暂不启用数据库；MongoDB 与 none 模式仅 health 路由可用（认证与 CRUD 模板基于 SQLAlchemy）
 - 密码 bcrypt 12 rounds，最小 8 位
 - JWT access_token 24h / refresh_token 7d
+- 生产模式：gunicorn master-worker 托管（`gunicorn.conf.py`）；服务运行中重复执行 `./restart.sh prod` 即热更新（HUP 优雅重启 worker），开发模式仍为 uvicorn --reload
 - 所有注释、文档使用中文
 
 ### Dockerfile
@@ -1100,7 +1136,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8080
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["gunicorn", "app.main:app", "-c", "gunicorn.conf.py"]
 ```
 
 ### docker-compose.yml
@@ -1179,6 +1215,6 @@ volumes:
 | `{{ENVELOPE_WAY}}` | `EnvelopeRoute` 为唯一包装点，handler 返回裸数据；`api_response` 仅供 exception_handler 兜底；文件下载等非 JSON 响应自动透传 |
 | `{{MODULE_STEPS}}` | ① `app/models/xxx.py` → ② `app/schemas/xxx.py` → ③ `app/crud/xxx.py` → ④ `app/api/routes/xxx.py`（`APIRouter(route_class=EnvelopeRoute)`）→ ⑤ `app/main.py` 中 `include_router` → ⑥ `python -m compileall app` + curl 验证 |
 | `{{MIDDLEWARE_STEPS}}` | 横切逻辑用 `@app.middleware("http")`；鉴权/权限类优先用 `Depends` 依赖注入 |
-| `{{ONE_CLICK_WAY}}` | Linux/macOS 运行 `./restart.sh [dev|prod]`，Windows 运行 `restart.bat [dev|prod]`；脚本自动检测/创建 venv → 安装依赖 → 安全停止旧进程 → 启动服务 → 输出日志命令 |
+| `{{ONE_CLICK_WAY}}` | Linux/macOS 运行 `./restart.sh [dev|prod]`（dev 热重载；prod 由 gunicorn master-worker 托管，服务运行中重复执行即热更新），Windows 运行 `restart.bat [dev|prod]`；脚本自动检测/创建 venv → 安装依赖 → 热更新或安全停止旧进程 → 启动服务 → 输出日志命令 |
 | `{{MIGRATION_WAY}}` | 开发阶段 `lifespan` 中 `create_all()` 自动建表；生产环境请使用 Alembic 管理迁移 |
 | `{{DB_START_WAY}}` | MySQL：`docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=app_db mysql:8.0`；PostgreSQL：`docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=root -e POSTGRES_DB=app_db postgres:15`；MongoDB：`docker run -d -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=root -e MONGO_INITDB_ROOT_PASSWORD=root -e MONGO_INITDB_DATABASE=app_db mongo:6`；无数据库：将 `.env` 中 `DB_TYPE=none`。本地安装：确保数据库已启动且 `.env` 中连接信息正确 |

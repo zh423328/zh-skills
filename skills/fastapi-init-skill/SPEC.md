@@ -47,7 +47,7 @@ create fastapi project、fastapi starter
 | 2 | **自动安装** | 创建 venv、安装所有依赖、编译检查 |
 | 3 | **一键启动/重启** | `./restart.sh [dev|prod]`：检测、拉代码、装依赖、安全停止旧进程、启动、输出日志命令 |
 | 4 | **开发模式** | `./restart.sh dev` 热重载，代码修改自动重启，日志 `logs/dev.log` |
-| 5 | **生产模式** | `./restart.sh prod` 后台多 worker 启动，PID 文件管理，日志 `logs/app.log` |
+| 5 | **生产模式 + 热更新** | `./restart.sh prod` 由 gunicorn master-worker 托管；服务运行中重复执行即热更新（HUP 优雅重启 worker，服务不中断），日志 `logs/app.log` |
 | 6 | **JWT 鉴权** | 注册 / 登录 / 刷新令牌 / 登出 / 当前用户注入（`/api/auth/*`） |
 | 7 | **示例 CRUD** | 条目管理 `/api/items`：分页列表、详情、创建、更新、删除，作为新模块参照实现 |
 | 8 | **统一响应** | `EnvelopeRoute` 自动包装 `{ code, message, data }` |
@@ -104,7 +104,7 @@ create fastapi project、fastapi starter
 3. 写入核心模块（main.py、core/config.py、core/security.py、core/response.py、core/exceptions.py、db/session.py、db/base.py）
 4. 写入数据层（models → schemas → crud）
 5. 写入路由层（api/deps.py、api/routes/：health、auth、items）
-6. 写入启动脚本（`restart.sh` / `restart.bat`，dev/prod 双模式）
+6. 写入启动脚本（`restart.sh` / `restart.bat`，dev/prod 双模式）与 `gunicorn.conf.py`
 7. 写入 Docker 配置（Dockerfile + docker-compose.yml / docker-compose.pg.yml / docker-compose.mongo.yml，按需启用）
 8. 写入强制交付物（docs/project-guide.md）与项目说明（README.md）
 
@@ -138,7 +138,8 @@ create fastapi project、fastapi starter
 
 🚀 启动方式：
   开发模式：  ./restart.sh dev        （热重载，日志 logs/dev.log）
-  生产模式：  ./restart.sh prod       （后台多 worker，日志 logs/app.log）
+  生产模式：  ./restart.sh prod       （gunicorn master-worker，日志 logs/app.log）
+  热更新：    ./restart.sh prod       （服务运行中重复执行 = HUP 优雅热更新）
   默认：      ./restart.sh            （同 dev）
 
 📖 接口文档：
@@ -200,6 +201,7 @@ create fastapi project、fastapi starter
 │   └── project-guide.md     # 项目指南（强制交付物）
 ├── restart.sh               # 一键启动/重启（Linux/macOS，dev/prod 双模式）
 ├── restart.bat              # 一键启动/重启（Windows，dev/prod 双模式）
+├── gunicorn.conf.py         # gunicorn 生产配置（master-worker + HUP 热更新，仅 Linux/macOS）
 ├── requirements.txt         # Python 依赖清单
 ├── .env.example             # 环境变量模板（含安全注释）
 ├── .env                     # 实际运行环境变量（首次从 .env.example 复制）
@@ -236,6 +238,8 @@ create fastapi project、fastapi starter
 | Motor | 异步 MongoDB 驱动 | PyPI 最新稳定版 |
 | Pydantic v2 | 数据校验与配置管理 | PyPI 最新稳定版 |
 | python-jose | JWT 签发与验证 | PyPI 最新稳定版 |
+| gunicorn | 生产进程管理器（master-worker、HUP 热更新，仅 Linux/macOS） | PyPI 最新稳定版 |
+| uvicorn-worker | gunicorn 的 ASGI worker 适配器 | PyPI 最新稳定版 |
 | bcrypt | 密码加密 | PyPI 最新稳定版 |
 | Alembic | 数据库迁移（生产环境） | PyPI 最新稳定版 |
 
@@ -244,6 +248,8 @@ create fastapi project、fastapi starter
 ```txt
 fastapi
 uvicorn[standard]
+gunicorn
+uvicorn-worker
 pydantic
 pydantic-settings
 python-dotenv
@@ -389,34 +395,49 @@ async def get_db():
 
 ### 8.1 脚本矩阵
 
-| 脚本 | 平台 | 模式 | 热重载 | PID 管理 | 日志 |
-|------|------|------|--------|----------|------|
-| `restart.sh` / `restart.bat` | Linux/macOS / Windows | `dev`（默认）/ `prod` | `dev` 开启 | ✅ | `logs/dev.log` / `logs/app.log` |
+| 脚本 | 平台 | 模式 | 启动方式 | 热更新 | 日志 |
+|------|------|------|----------|--------|------|
+| `restart.sh` | Linux/macOS | `dev`（默认） | `uvicorn --reload` | 文件变更热重载 | `logs/dev.log` |
+| `restart.sh` | Linux/macOS | `prod` | `gunicorn -c gunicorn.conf.py` | ✅ HUP 优雅重启 worker | `logs/app.log` |
+| `restart.bat` | Windows | `dev` / `prod` | uvicorn | ❌（gunicorn 不支持 Windows） | 同上 |
 
 ### 8.2 restart.sh / restart.bat 工作流程
 
 ```
 [1/5] 检测 git 仓库，存在则 git pull（失败仅警告）
 [2/5] 创建/激活虚拟环境，安装/更新依赖
-[3/5] 安全停止旧进程（PID 文件 + 端口兜底）
-[4/5] 启动 uvicorn（dev 带热重载 / prod 多 worker + 资源限制）
+[3/5] prod 且 gunicorn master 存活且端口在监听 → kill -HUP 热更新（跳过后续步骤）
+      否则：安全停止旧进程（PID 文件 + 端口兜底）
+[4/5] 启动服务（dev: uvicorn --reload / prod: gunicorn master-worker）
 [5/5] 写入 PID 文件，输出日志查看命令
 ```
 
-### 8.3 安全停止旧进程
+### 8.3 生产热更新机制
 
-1. 读取 `app.pid`，若进程仍为 uvicorn/python，则 `kill` 优雅停止
+`restart.sh prod` 在服务运行中重复执行时，脚本检测 `app.pid` 进程存活、进程命令行包含 gunicorn（`ps -o command=`，gunicorn 的 comm 显示为 python3）、`APP_PORT` 在监听三个条件，全部满足则只发 `kill -HUP`：
+
+1. master 重读 `gunicorn.conf.py`
+2. fork 新 worker（重新 import 磁盘上的新代码）
+3. 旧 worker 停止接新请求，处理完存量请求后退出（最长等 `graceful_timeout` 秒）
+4. 端口始终由 master 监听，用户零感知
+
+条件任一不满足（首次启动、进程已挂、改了端口）则走完全重启。**关键前提：`gunicorn.conf.py` 中 `preload_app=False`（默认），否则 HUP 出来的 worker 仍跑旧代码。**
+
+### 8.4 安全停止旧进程（完全重启路径）
+
+1. 读取 `app.pid`，若进程仍为 uvicorn/gunicorn/python，则 `kill` 优雅停止
 2. 若 PID 文件丢失/失效，使用端口扫描清理占用 `APP_PORT` 的残留进程
 3. 清理后等待 1 秒，确保端口释放
 
-### 8.4 启动参数
+### 8.5 启动参数
 
 ```bash
-./restart.sh        # dev 模式：热重载，日志 logs/dev.log
-./restart.sh prod   # prod 模式：多 worker，日志 logs/app.log
+./restart.sh        # dev 模式：uvicorn 热重载，日志 logs/dev.log
+./restart.sh prod   # prod 模式：gunicorn master-worker，日志 logs/app.log
+./restart.sh prod   # 服务运行中再次执行：热更新
 ```
 
-环境变量：
+环境变量（由 `gunicorn.conf.py` 与脚本共同约定）：
 
 - `APP_PORT`：默认 8080
 - `APP_WORKERS`：`prod` 模式 worker 数，默认 2
@@ -444,7 +465,7 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8080
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["gunicorn", "app.main:app", "-c", "gunicorn.conf.py"]
 ```
 
 ### 9.2 docker-compose 编排

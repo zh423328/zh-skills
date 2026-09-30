@@ -142,7 +142,7 @@ def generate_project(target_dir: Path, project_name: str, db_type: str = "mysql"
         if heading.startswith("app/"):
             rel = heading.replace("/", os.sep)
             write_text(target_dir / rel, content)
-        elif heading in (".env.example", ".gitignore"):
+        elif heading in (".env.example", ".gitignore", "gunicorn.conf.py"):
             write_text(target_dir / heading, content)
         elif heading in ("Dockerfile", "docker-compose.yml", "docker-compose.pg.yml", "docker-compose.mongo.yml"):
             write_text(target_dir / heading, content)
@@ -196,7 +196,7 @@ def generate_project(target_dir: Path, project_name: str, db_type: str = "mysql"
             "ENVELOPE_WAY": "EnvelopeRoute 为唯一包装点，handler 返回裸数据；api_response 仅供 exception_handler 兜底；文件下载等非 JSON 响应自动透传",
             "MODULE_STEPS": "① app/models/xxx.py → ② app/schemas/xxx.py → ③ app/crud/xxx.py → ④ app/api/routes/xxx.py（APIRouter(route_class=EnvelopeRoute)）→ ⑤ app/main.py 中 include_router → ⑥ python -m compileall app + curl 验证",
             "MIDDLEWARE_STEPS": "横切逻辑用 @app.middleware(\"http\")；鉴权/权限类优先用 Depends 依赖注入",
-            "ONE_CLICK_WAY": "Linux/macOS 运行 ./restart.sh [dev|prod]，Windows 运行 restart.bat [dev|prod]；脚本自动检测/创建 venv → 安装依赖 → 安全停止旧进程 → 启动服务 → 输出日志命令",
+            "ONE_CLICK_WAY": "Linux/macOS 运行 ./restart.sh [dev|prod]（dev 热重载；prod 由 gunicorn master-worker 托管，服务运行中重复执行即热更新），Windows 运行 restart.bat [dev|prod]；脚本自动检测/创建 venv → 安装依赖 → 热更新或安全停止旧进程 → 启动服务 → 输出日志命令",
             "MIGRATION_WAY": "开发阶段 lifespan 中 create_all() 自动建表；生产环境请使用 Alembic 管理迁移",
             "DB_START_WAY": "MySQL：docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=app_db mysql:8.0；PostgreSQL：docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=root -e POSTGRES_DB=app_db postgres:15；MongoDB：docker run -d -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=root -e MONGO_INITDB_ROOT_PASSWORD=root -e MONGO_INITDB_DATABASE=app_db mongo:6；无数据库：将 .env 中 DB_TYPE=none",
             "DATE": datetime.now(timezone.utc).strftime("%Y-%m-%d"),

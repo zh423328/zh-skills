@@ -19,10 +19,11 @@ zh-skill/
 
 面向零基础用户，说一句"帮我搭一个 FastAPI 项目"即可从环境探测、自动安装到服务启动一条命令跑通。
 
-- **生成的骨架**：对齐 FastAPI 官方模板主流分层（`api / core / crud / models / schemas / db`），内置 JWT 鉴权、示例 CRUD、统一响应 `{ code, message, data }`、Swagger 文档、一键启动脚本（`restart.sh` / `restart.bat`）、Docker 编排
+- **生成的骨架**：对齐 FastAPI 官方模板主流分层（`api / core / crud / models / schemas / db`），内置 JWT 鉴权、示例 CRUD、统一响应 `{ code, message, data }`、Swagger 文档、一键启动脚本（`restart.sh` / `restart.bat`，生产模式 gunicorn 托管支持热更新）、Docker 编排
 - **数据库**：MySQL（默认）/ PostgreSQL / MongoDB / 无数据库，四选一
 - **触发词**：`FastAPI 脚手架`、`初始化 FastAPI 项目`、`帮我搭一个 FastAPI`、`fastapi init` 等
 - 📖 **详细介绍**：[skills/fastapi-init-skill/README.md](skills/fastapi-init-skill/README.md)（完整功能规格见 [SPEC.md](skills/fastapi-init-skill/SPEC.md)）
+- 🚀 **生产部署**：[docs/fastapi-生产热更新方案.md](docs/fastapi-生产热更新方案.md)（gunicorn + UvicornWorker 与容器化滚动发布详解）
 
 ### 2. [article-auto-publisher](skills/article-auto-publisher/) — 主题自动写作与发布
 
