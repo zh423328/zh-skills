@@ -1,15 +1,17 @@
 # zh-skill — Agent Skills 合集
 
-本仓库用于沉淀与维护自定义的 AI 编程助手（ZCode / Claude Code）skill。每个 skill 是一个独立目录，包含触发描述（`SKILL.md`）、参考资料（`references/`）与可执行脚本（`scripts/`）。
+本仓库用于沉淀与维护自定义的 AI 编程助手（ZCode / Claude Code）skill。每个 skill 是一个独立目录，包含触发描述（`SKILL.md`）、参考资料（`references/`）、可执行脚本（`scripts/`）与静态资源（`assets/`）。
 
 ## 目录结构
 
 ```
 zh-skill/
 ├── README.md                        # 本文件：仓库总览与各 skill 简介
+├── docs/                            # 专题文档：生产部署、更新系统使用说明等
 └── skills/
     ├── fastapi-init-skill/          # FastAPI 项目一键初始化
     ├── article-auto-publisher/      # 主题自动写作与发布
+    ├── uni-app-app-update/          # uni-app App 更新系统复刻
     └── vue-vant-to-uniapp-migrator/ # Vue Vant 页面迁移 UniApp
 ```
 
@@ -40,6 +42,18 @@ zh-skill/
 - **硬性约束**：保留业务逻辑、函数名、文件名与样式类名；不引入自定义组件；不改动目标项目请求封装
 - **触发词**：`迁移页面`、`Vant 转 uni-app`、`H5 迁移到小程序` 等
 - 📖 **详细介绍**：[skills/vue-vant-to-uniapp-migrator/README.md](skills/vue-vant-to-uniapp-migrator/README.md)
+
+### 4. [uni-app-app-update](skills/uni-app-app-update/) — uni-app App 更新系统复刻
+
+在经典 uni-app 项目（vue3 + `plus.*` API，非 uni-app x）中复刻完整的应用内更新系统：原生绘制更新弹窗、wgt 热更新、Android apk 整包下载安装、iOS App Store / TestFlight 引导、CLI 命令行打 wgt（不依赖 HBuilderX）。
+
+- **核心实现**：更新弹窗（`plus.nativeObj.View` 原生绘制，强制 / 确认 / 静默三种类型）、下载进度、`plus.runtime.install` 安装重启，全部经过生产项目验证；`appUpdate.ts` 整份复制不重写，只有服务端接口对接层按项目改写
+- **CLI 打 wgt**：`uni build -p app && node scripts/pack-wgt.js`，产物为 `${appid}_${versionCode}.wgt`（官方 quickstart-cli 命名规则，manifest 支持 JSONC 注释）
+- **两条铁律**：wgt 不能改变原生层（原生插件 / manifest / SDK 变更必须整包）；versionCode 单调递增且大于历史上所有已发版本
+- **零后端方案**：`assets/version.json` 可直接静态托管，接口层改请求该地址即可
+- **触发词**：`加应用更新`、`版本更新`、`检查更新`、`wgt 热更新`、`打 wgt 包`、`App 内更新 apk`、`更新弹窗` 等
+- 📖 **详细介绍**：[skills/uni-app-app-update/README.md](skills/uni-app-app-update/README.md)
+- 📘 **完整使用文档**：[docs/uni-app-app-update-使用文档.md](docs/uni-app-app-update-使用文档.md)（机制原理、接入步骤、服务端约定、发版操作、FAQ）
 
 ## 如何使用
 

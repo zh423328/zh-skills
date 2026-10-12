@@ -1,0 +1,26 @@
+{
+  "update": [
+    {
+      "name": "normal",
+      "platform": "android",
+      "version": "1.1.5",
+      "versionCode": 119,
+      "updateContent": "1. 修复xx问题\n2. 优化xx体验",
+      "forceUpdate": false,
+      "updateType": "solicit",
+      "downloadUrl": "https://your-cdn.com/app/wgt/__UNI__XXXXXX_119.wgt",
+      "publishTime": "2026-10-12 10:00:00"
+    },
+    {
+      "name": "ios",
+      "platform": "ios",
+      "version": "1.1.5",
+      "versionCode": 119,
+      "updateContent": "1. 修复xx问题\n2. 优化xx体验",
+      "forceUpdate": false,
+      "updateType": "solicit",
+      "downloadUrl": "https://testflight.apple.com/join/XXXXXXXX",
+      "publishTime": "2026-10-12 10:00:00"
+    }
+  ]
+}
