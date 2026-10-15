@@ -12,6 +12,7 @@ zh-skill/
     ├── fastapi-init-skill/          # FastAPI 项目一键初始化
     ├── article-auto-publisher/      # 主题自动写作与发布
     ├── uni-app-app-update/          # uni-app App 更新系统复刻
+    ├── uni-app-uts-native-sdk/      # UTS 插件封装三方原生 SDK
     └── vue-vant-to-uniapp-migrator/ # Vue Vant 页面迁移 UniApp
 ```
 
@@ -54,6 +55,18 @@ zh-skill/
 - **触发词**：`加应用更新`、`版本更新`、`检查更新`、`wgt 热更新`、`打 wgt 包`、`App 内更新 apk`、`更新弹窗` 等
 - 📖 **详细介绍**：[skills/uni-app-app-update/README.md](skills/uni-app-app-update/README.md)
 - 📘 **完整使用文档**：[docs/uni-app-app-update-使用文档.md](docs/uni-app-app-update-使用文档.md)（机制原理、接入步骤、服务端约定、发版操作、FAQ）
+
+### 5. [uni-app-uts-native-sdk](skills/uni-app-uts-native-sdk/) — UTS 插件封装三方原生 SDK
+
+用 uni-app UTS 插件把 Android / iOS 原生 SDK 封装成**双端一套 API**，业务层不写 `#ifdef APP-PLUS`。覆盖插件目录规范、原生依赖声明、协议 / 代理实现、权限申请与后台能力，以及把既有原生插件（aar / framework）迁移改造为 UTS 插件的完整方法论。
+
+- **核心硬要点**：UTS `number` 编译为 `kotlin.Number` 不会自动转换（「进 `Number.from`，出 `toXXX`」）；iOS 方法标签用 `=` 不用 `:`、协议方法每参数都要 `@argumentLabel`；Android 权限必须递增申请（前台 → 通知 → 后台），否则后台定位静默失败
+- **设计规范**：单次能力 `{ success, fail, complete }`、持续能力 `on/off/start/stop` + 独立错误通道；权限类插件必须提供「体检 + 导诊」；后台能力的生命周期归属（页面 vs App）与上报 / 渲染双回调拆分
+- **迁移方法论**：契约反编译还原（`javap -c -p` / `nm -gU`）→ 调用点全项目扫描（三方组件藏在 uni_modules 里）→ manifest 合并（FileProvider authority 唯一）→ `onAppActivityResult` 回传范式
+- **踩坑沉淀**：22 条实测踩坑 + 交付自检清单，重点覆盖「能编译 ≠ 能用」的权限类问题
+- **触发词**：`封装原生 SDK 成 uni-app 插件`、`UTS 插件`、`原生插件改 UTS`、`utssdk 怎么写`、`UTS 编译报错`、`回调不触发` 等
+- 📖 **详细介绍**：[skills/uni-app-uts-native-sdk/README.md](skills/uni-app-uts-native-sdk/README.md)
+- 📘 **完整使用文档**：[docs/uni-app-uts-native-sdk-使用文档.md](docs/uni-app-uts-native-sdk-使用文档.md)（目录规范、语法硬要点、后台能力、API 设计、迁移、自检清单）
 
 ## 如何使用
 
